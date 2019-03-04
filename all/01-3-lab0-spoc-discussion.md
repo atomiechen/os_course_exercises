@@ -17,13 +17,24 @@
 ## 思考题
 
 - 你理解的对于类似ucore这样需要进程/虚存/文件系统的操作系统，在硬件设计上至少需要有哪些直接的支持？至少应该提供哪些功能的特权指令？
-
+  - 进程切换需要中断，故硬件应支持时钟中断；虚存管理需要实现内存管理单元MMU；文件系统需要持久性存储介质来实现存储。
+  - 需要支持进程/虚存/文件系统的特权指令，例如提供中断使能、触发软中断的指令，设置内存寻址模式、设置页表的指令，执行IO读写操作的指令。
 - 你理解的x86的实模式和保护模式有什么区别？物理地址、线性地址、逻辑地址的含义分别是什么？
-
+  - x86实模式和保护模式：
+    - 实模式：16位寻址空间，可访问的物理内存空间不超过1MB，80386加电启动后处于实模式状态（向下兼容缘故），之后可以切换到保护模式。
+    - 保护模式：32位寻址空间4GB，且支持内存分页机制，支持虚拟内存；支持多任务；支持优先级机制
+    - 二者区别在于进程内存是否受到保护。实模式不区分系统程序和用户程序，将实际的物理内存看作分段的区域，每个程序中的指针都指向实际的地址，安全性较低。保护模式区分了系统程序和用户程序，物理内存是不可被程序直接访问的，而是OS通过将虚拟地址转化之后访问物理地址，该过程对程序是透明的。
+  - 各种地址的含义：
+    - 物理地址：内存中实际的地址，是CPU提交到总线上用于访问内存和外设的最终地址。一个系统只有一个物理地址。
+    - 线性地址：逻辑地址转变到物理地址的中间地址，是在OS的虚存管理下每个运行的应用程序能访问的地址，即逻辑地址通过段机制处理后形成的地址。
+    - 逻辑地址：程序直接使用的地址。
 - 你理解的risc-v的特权模式有什么区别？不同 模式在地址访问方面有何特征？
-
+  - RISC-V有四个特权模式：用户模式、监督模式、机器模式和Hypervisor模式。不同模式可使用的指令有所不同。
+  - RISC-V有特权指令集，支持如下计算机系统：
+    - 仅拥有机器模式的系统
+    - 同时拥有机器模式和用户模式的系统
+    - 同时拥有所有四个模式的系统
 - 理解ucore中list_entry双向链表数据结构及其4个基本操作函数和ucore中一些基于它的代码实现（此题不用填写内容）
-
 - 对于如下的代码段，请说明":"后面的数字是什么含义
 ```
  /* Gate descriptors for interrupts and traps */
@@ -39,6 +50,8 @@
     unsigned gd_off_31_16 : 16;        // high bits of offset in segment
  };
 ```
+
+答：表示该域在struct中所占据的位数。根据C++语法，冒号后面的数字限定了该类型所占用的bit数。
 
 - 对于如下的代码段，
 
@@ -62,6 +75,55 @@ intr=8;
 SETGATE(intr, 1,2,3,0);
 ```
 请问执行上述指令后， intr的值是多少？
+
+答：结果为131075，即十六进制下的0x20003。可讲上述内容编写为如下代码：
+
+```C
+#include <stdio.h>
+
+typedef unsigned uint32_t;
+
+#define STS_IG32 0xE
+#define STS_TG32 0xF
+#define SETGATE(gate, istrap, sel, off, dpl)         \
+{                                                    \
+	(gate).gd_off_15_0 = (uint32_t)(off)&0xffff;     \
+	(gate).gd_ss = (sel);                            \
+	(gate).gd_args = 0;                              \
+	(gate).gd_rsv1 = 0;                              \
+	(gate).gd_type = (istrap) ? STS_TG32 : STS_IG32; \
+	(gate).gd_s = 0;                                 \
+	(gate).gd_dpl = (dpl);                           \
+	(gate).gd_p = 1;                                 \
+	(gate).gd_off_31_16 = (uint32_t)(off) >> 16;     \
+}
+
+struct gatedesc {
+	unsigned gd_off_15_0 : 16;   // low 16 bits of offset in segment
+	unsigned gd_ss : 16;         // segment selector
+	unsigned gd_args : 5;        // # args, 0 for interrupt/trap gates
+	unsigned gd_rsv1 : 3;        // reserved(should be zero I guess)
+	unsigned gd_type : 4;        // type(STS_{TG,IG32,TG32})
+	unsigned gd_s : 1;           // must be 0 (system)
+	unsigned gd_dpl : 2;         // descriptor(meaning new) privilege level
+	unsigned gd_p : 1;           // Present
+	unsigned gd_off_31_16 : 16;  // high bits of offset in segment
+};
+
+int main(int argc, char const* argv[]) {
+	unsigned intr = 8;
+	struct gatedesc intr_elem = *(struct gatedesc *) &intr;
+
+	SETGATE(intr_elem, 1, 2, 3, 0);
+
+	intr = *(unsigned *) &intr_elem;
+	printf("%d\n", intr);
+	printf("0x%x\n", intr);
+	return 0;
+}
+```
+
+
 
 ### 课堂实践练习
 
