@@ -19,3 +19,6 @@ _book
 *~
 backup
 build
+
+# 递归所有Mac上产生的.DS_Store文件
+.DS_Store
