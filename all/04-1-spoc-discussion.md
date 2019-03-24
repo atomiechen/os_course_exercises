@@ -125,6 +125,18 @@ time ./goodlocality
 ```
 可以看到其执行时间。
 
+测试结果如下：
+
+```
+10485760 count computing over!
+
+real	0m0.039s
+user	0m0.030s
+sys	0m0.000s
+```
+
+
+
 ## 小组思考题目
 ----
 
