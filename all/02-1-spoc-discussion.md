@@ -27,6 +27,8 @@
    -  BIOS是固化到计算机主板上的程序，用汇编语言编写。
    -  UEFI（Unified Extensible Firmware Interface）是一个定义OS和系统固件之间的接口标准，是所有平台上一致的操作系统启动服务，使用C语言编写，具有跨CPU、跨OS特征。是BIOS的替代。
 -  理解rcore中的Berkeley BootLoader (BBL)的功能。
+   -  从实模式切换到保护模式
+   -  完成OS加载
 
 ## 3.2 系统启动流程
 
