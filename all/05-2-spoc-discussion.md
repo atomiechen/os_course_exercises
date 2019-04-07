@@ -5,37 +5,64 @@
 
 1. 进程切换的可能时机有哪些？
 
+   - 进程时间片用完、被抢占、进入等待、进程结束。
+
 2. 分析ucore的进程切换代码，说明ucore的进程切换触发时机和进程切换的判断时机都有哪些。
 
+   - schedule()：开始调度、清楚调度标志、查找就绪进程、修改进程状态
+   - proc_run()
+   - switch_to()：进程切换
+
 3. ucore的进程控制块数据结构是如何组织的？主要字段分别表示什么？
+
+   ```c
+   struct proc_struct {
+       enum proc_state state;                      // Process state
+       int pid;                                    // Process ID
+       int runs;                                   // the running times of Proces
+       uintptr_t kstack;                           // Process kernel stack
+       volatile bool need_resched;                 // bool value: need to be rescheduled to release CPU?
+       struct proc_struct *parent;                 // the parent process
+       struct mm_struct *mm;                       // Process's memory management field
+       struct context context;                     // Switch here to run process
+       struct trapframe *tf;                       // Trap frame for current interrupt
+       uintptr_t cr3;                              // CR3 register: the base addr of Page Directroy Table(PDT)
+       uint32_t flags;                             // Process flag
+       char name[PROC_NAME_LEN + 1];               // Process name
+       list_entry_t list_link;                     // Process link list 
+       list_entry_t hash_link;                     // Process hash list
+   };
+   ```
+
+   
 
 ### 12.2 进程创建
 
 1. fork()的返回值是唯一的吗？父进程和子进程的返回值是不同的。请找到相应的赋值代码。
-
+   - 唯一，每个进程对应一个pid。对于父进程，fork()返回子进程的pid；对于子进程，fork()返回0。
 2. 新进程创建时的进程标识是如何设置的？请指明相关代码。
-
+   - get_pid()
 3. 请通过fork()的例子中进程标识的赋值顺序说明进程的执行顺序。
-
+   - 根据示例可知，每个进程在其时间片内执行代码，所产生的子进程编号递增；当其时间片用完，下一个进程在fork之后得到的若干子进程的编号，则在前一个进程fork出来的最后一个子进程的编号后重新递增编号。
 4. 请在ucore启动时显示空闲进程（idleproc）和初始进程（initproc）的进程标识。
-
 5. 请在ucore启动时显示空闲线程（idleproc）和初始进程(initproc)的进程控制块中的“pde_t *pgdir”的内容。它们是否一致？为什么？
 
 ### 12.3 进程加载
 
 1. 加载进程后，新进程进入就绪状态，它开始执行时的第一条指令的位置，在elf中保存在什么地方？在加载后，保存在什么地方？
+   - 加载后在0x804800
 2. 第一个用户进程执行的代码在哪里？它是什么时候加载到内存中的？
+   - 在内存中；在加载ELF的时候，先拷贝代码段。
 
 ### 12.4 进程等待与退出
 
 1. 试分析wait()和exit()的结果放在什么地方？exit()是在什么时候放进去的？wait()在什么地方取到出的？
-
 2. 试分析ucore操作系统内核是如何把子进程exit()的返回值传递给父进程wait()的？
-
 3. 什么是僵尸进程和孤儿进程？
-
+   - 僵尸进程：子进程通过exit()退出时，父进程既没有结束，也没有通过wait()等待子进程结束，则子进程成为“僵尸进程(zombie)”，即在父进程调用wait()前结束的进程
+   - 孤儿进程：父进程早于该进程结束
 4. 试分析sleep()系统调用的实现。在什么地方设置的定时器？它对应的等待队列是哪个？它的唤醒操作在什么地方？
-
+   - 在内核中注册硬件实现了的定时器，当计数器为0时产生中断。
 5. 通常的函数调用和函数返回都是一一对应的。有不是一一对应的例外情况？如果有，请举例说明。
 
 ## 小组思考题
@@ -94,7 +121,7 @@ instruction_to_execute = self.proc_info[self.curr_proc][PROC_CODE].pop(0)
  - 调度函数：next_proc
 
 ### 执行实例
-   
+
 #### 例1
 ```
 $./process-simulation.py  -l 5:30:30,5:40:30 -c
